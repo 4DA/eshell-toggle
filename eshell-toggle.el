@@ -1,4 +1,4 @@
-;;; eshell-toggle.el --- Quickly switch windows. 
+;;; eshell-toggle.el --- Show/hide eshell under active window
 
 ;; Copyright (C) 2015  Free Software Foundation, Inc.
 
