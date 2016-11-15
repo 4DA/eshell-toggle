@@ -1,11 +1,11 @@
 ;;; eshell-toggle.el --- Show/hide eshell under active window
 
-;; Copyright (C) 2015  Free Software Foundation, Inc.
+;; Copyright (C) 2015, 2016  Dmitry Cherkasov
 
 ;; Author: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; Maintainer: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; URL: https://github.com/4da/eshell-toggle
-;; Version: 0.1.0
+;; Version: 0.8.0
 ;; Package-Requires: ((dash "2.11.0"))
 ;; Keywords: eshell
 
@@ -67,13 +67,7 @@
   nil)
 
 (defun et-make-buffer-name ()
-  (let* ((parent (if (buffer-file-name)
-		     (file-name-directory (buffer-file-name))
-		   et-default-directory))
-	 (fname (uniquify-buffer-file-name (current-buffer)))
-	 (name (if fname 
-		   (string-join (split-string fname "/") et-name-separator)
-		 (concat et-name-separator et-default-directory)))
+  (let* ((name (string-join (split-string default-directory "/") et-name-separator))
 	 (buf-name (concat "*et" name "*")))
     buf-name))
 
@@ -85,7 +79,6 @@
     (other-window 1)
 
     (if new-buffer?
-	;; create a new buffer
 	(progn
 	  (eshell "new")
 	  (rename-buffer buf-name)
