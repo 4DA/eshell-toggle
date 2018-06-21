@@ -51,6 +51,11 @@
   "Default directory to open eshell at if buffer has no associated file."
   :group 'eshell-toggle)
 
+(defcustom et-use-projectile-root
+  nil
+  "Open eshell at projectile's project root if not nil."
+  :group 'eshell-toggle)
+
 (defcustom et-name-separator
   ":"
   "String to separate directory paths when giving a name to buffer"
@@ -66,24 +71,36 @@
 	(window-list))
   nil)
 
-(defun et-make-buffer-name ()
-  (let* ((name (string-join (split-string default-directory "/") et-name-separator))
-	 (buf-name (concat "*et" name "*")))
-    buf-name))
+(defun et-get-directory ()
+  (if et-use-projectile-root
+                  (condition-case nil
+                      (projectile-project-root)
+                    (error default-directory))
+    default-directory))
+
+  (defun et-make-buffer-name ()
+    (let* ((dir (et-get-directory))
+           (name (string-join (split-string dir "/") et-name-separator))
+           (buf-name (concat "*et" name "*")))
+      buf-name))
 
 (make-variable-buffer-local 'eshell-buffer-p)
 
 (defun et-show-buffer-split-window (buf-name new-buffer?)
-  (let ((height (/ (window-total-height) et-eshell-height-fraction)))  
+  (let ((height (/ (window-total-height) et-eshell-height-fraction))
+        (dir (et-get-directory)))
     (split-window-vertically (- height))
     (other-window 1)
 
     (if new-buffer?
 	(progn
 	  (eshell "new")
-	  (rename-buffer buf-name)
+          (rename-buffer buf-name)
 
-	  (setq eshell-buffer-p t)
+          (setq eshell-buffer-p t)
+          (insert (concat "cd" " " dir))
+	  (eshell-send-input)
+          (eshell/clear)
 	  (insert (concat "ls"))
 	  (eshell-send-input))
       (progn
