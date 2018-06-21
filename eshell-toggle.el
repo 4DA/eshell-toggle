@@ -73,16 +73,16 @@
 
 (defun et-get-directory ()
   (if et-use-projectile-root
-                  (condition-case nil
-                      (projectile-project-root)
-                    (error default-directory))
+      (condition-case nil
+          (projectile-project-root)
+        (error default-directory))
     default-directory))
 
-  (defun et-make-buffer-name ()
-    (let* ((dir (et-get-directory))
-           (name (string-join (split-string dir "/") et-name-separator))
-           (buf-name (concat "*et" name "*")))
-      buf-name))
+(defun et-make-buffer-name ()
+  (let* ((dir (et-get-directory))
+         (name (string-join (split-string dir "/") et-name-separator))
+         (buf-name (concat "*et" name "*")))
+    buf-name))
 
 (make-variable-buffer-local 'eshell-buffer-p)
 
@@ -93,18 +93,18 @@
     (other-window 1)
 
     (if new-buffer?
-	(progn
-	  (eshell "new")
+        (progn
+          (eshell "new")
           (rename-buffer buf-name)
 
           (setq eshell-buffer-p t)
           (insert (concat "cd" " " dir))
-	  (eshell-send-input)
+          (eshell-send-input)
           (eshell/clear)
-	  (insert (concat "ls"))
-	  (eshell-send-input))
+          (insert (concat "ls"))
+          (eshell-send-input))
       (progn
-	(switch-to-buffer buf-name)))))
+        (switch-to-buffer buf-name)))))
 
 (defun eshell-toggle ()
   "Show eshell at the bottom of current window cd to current buffer's path. 
