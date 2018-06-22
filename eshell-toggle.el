@@ -54,6 +54,8 @@
 (defcustom et-use-projectile-root
   nil
   "Open eshell at projectile's project root if not nil."
+  :type '(choice (const :tag "Disabled" nil)
+                 (const :tag "Enabled" t))
   :group 'eshell-toggle)
 
 (defcustom et-name-separator
