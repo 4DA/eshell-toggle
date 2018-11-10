@@ -1,13 +1,13 @@
-;;; eshell-toggle.el --- Show/hide eshell under active window
+;;; eshell-toggle.el --- Show/hide eshell under active window. -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2015, 2016  Dmitry Cherkasov
 
 ;; Author: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; Maintainer: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; URL: https://github.com/4da/eshell-toggle
-;; Version: 0.8.0
-;; Package-Requires: ((dash "2.11.0"))
-;; Keywords: eshell
+;; Version: 0.9.0
+;; Package-Requires: ((emacs "24.4")(dash "2.11.0"))
+;; Keywords: processes
 
 ;; This file is part of GNU Emacs.
 
@@ -27,108 +27,147 @@
 ;;; Commentary:
 ;;
 ;; Call `eshell-toggle' to toggle eshell for current buffer.
-;; Show eshell at the bottom of current window cd to current buffer's path. 
-;; If eshell-toggle'd buffer is already visible in frame for current buffer or current window is (toggled) eshell itself then hide it. 
+;; Show eshell at the bottom of current window cd to current buffer's path.
+;; If eshell-toggle'd buffer is already visible in frame for current buffer or current window is (toggled) eshell itself then hide it.
 
 (require 'dash)
-(require 'cl-lib)
 (require 'eshell)
+(require 'term)
+(require 'subr-x)
 
 ;;; Customization
 
-(defgroup eshell-toggle nil
-  "Customize group for eshell-toglle.el"
-  :group 'emacs
-  :prefix "et-")
+;;; Code:
 
-(defcustom et-eshell-height-fraction
+(defgroup eshell-toggle nil
+  "Customize group for eshell-toggle.el"
+  :group 'emacs)
+
+(defcustom eshell-toggle-height-fraction
   3
-  "Proportion of parent window height and eshell window"
+  "Proportion of parent window height and eshell window."
+  :type 'integer
   :group 'eshell-toggle)
 
-(defcustom et-default-directory
+(defcustom eshell-toggle-default-directory
   default-directory
   "Default directory to open eshell at if buffer has no associated file."
+  :type 'directory
   :group 'eshell-toggle)
 
-(defcustom et-use-projectile-root
+(defcustom eshell-toggle-use-projectile-root
   nil
   "Open eshell at projectile's project root if not nil."
   :type '(choice (const :tag "Disabled" nil)
                  (const :tag "Enabled" t))
   :group 'eshell-toggle)
 
-(defcustom et-name-separator
+(defcustom eshell-toggle-name-separator
   ":"
-  "String to separate directory paths when giving a name to buffer"
+  "String to separate directory paths when giving a name to buffer."
+  :type 'string
   :group 'eshell-toggle)
 
-(defvar eshell-buffer-p nil)
+(defcustom eshell-toggle-init-term-char-mode
+  nil
+  "Switch `ansi-term' buffer to ‘term-char-mode’ after init.  Bind `eshell-toggle' in `term-raw-map'."
+  :type 'boolean
+  :group 'eshell-toggle)
 
-(cl-defun et-visible-for-bufferp (et-buffer-name)
-  (-map (lambda (win)
-	  (when (string= et-buffer-name
-			 (buffer-name (window-buffer win)))
-	    (cl-return-from et-visible-for-bufferp win)))
-	(window-list))
-  nil)
+(defcustom eshell-toggle-init-function
+  'eshell-toggle-init-eshell
+  "Function to init toggle buffer."
+  :type 'function
+  :group 'eshell-toggle)
 
-(defun et-get-directory ()
-  (if et-use-projectile-root
+(defvar eshell-toggle--toggle-buffer-p nil)
+(make-variable-buffer-local 'eshell-toggle--toggle-buffer-p)
+
+(defun eshell-toggle--visiblep (et-buffer-name)
+  "Return if ET-BUFFER-NAME is visible."
+  (-some (lambda (win)
+           (and (-> win window-buffer buffer-name
+                    (string= et-buffer-name))
+                win))
+	 (window-list)))
+
+(defun eshell-toggle--get-directory ()
+  "Return default directory for current buffer."
+  (if eshell-toggle-use-projectile-root
       (condition-case nil
           (projectile-project-root)
-        (error default-directory))
-    default-directory))
+        (error eshell-toggle-default-directory))
+    eshell-toggle-default-directory))
 
-(defun et-make-buffer-name ()
-  (let* ((dir (et-get-directory))
-         (name (string-join (split-string dir "/") et-name-separator))
+(defun eshell-toggle--make-buffer-name ()
+  "Generate toggle buffer name."
+  (let* ((dir (eshell-toggle--get-directory))
+         (name (string-join (split-string dir "/") eshell-toggle-name-separator))
          (buf-name (concat "*et" name "*")))
     buf-name))
 
-(make-variable-buffer-local 'eshell-buffer-p)
+(defun eshell-toggle-init-eshell (dir)
+  "Init `eshell' buffer with DIR."
+  (eshell "new")
+  (insert (concat "cd" " " dir))
+  (eshell-send-input)
+  (eshell/clear)
+  (insert (concat "ls"))
+  (eshell-send-input))
 
-(defun et-show-buffer-split-window (buf-name new-buffer?)
-  (let ((height (/ (window-total-height) et-eshell-height-fraction))
-        (dir (et-get-directory)))
+;; TODO: move common code to a macro
+(defun eshell-toggle-init-ansi-term (dir)
+  "Init `ansi-term' buffer with DIR."
+  (ansi-term (getenv "SHELL"))
+  (term-line-mode)
+  (insert (concat "cd" " " dir "; clear; ls"))
+  (term-send-input)
+  (when eshell-toggle-init-term-char-mode
+    (term-char-mode)))
+
+(defun eshell-toggle-init-tmux (dir)
+  "Init tmux `ansi-term' buffer with DIR."
+  (ansi-term (getenv "SHELL"))
+  (term-line-mode)
+  (insert (format "tmux new -A -c '%s' -s '%s'" dir dir))
+  (term-send-input)
+  (when eshell-toggle-init-term-char-mode
+    (term-char-mode)))
+
+(defun eshell-toggle--show-buffer-split-window (buf-name new-buffer?)
+  "Split window, init BUF-NAME if NEW-BUFFER? is t and activate it."
+  (let ((height (/ (window-total-height) eshell-toggle-height-fraction))
+        (dir (eshell-toggle--get-directory)))
     (split-window-vertically (- height))
     (other-window 1)
 
     (if new-buffer?
         (progn
-          (eshell "new")
+          (funcall eshell-toggle-init-function dir)
           (rename-buffer buf-name)
-
-          (setq eshell-buffer-p t)
-          (insert (concat "cd" " " dir))
-          (eshell-send-input)
-          (eshell/clear)
-          (insert (concat "ls"))
-          (eshell-send-input))
-      (progn
-        (switch-to-buffer buf-name)))))
+          (setq eshell-toggle--toggle-buffer-p t))
+      (switch-to-buffer buf-name))))
 
 (defun eshell-toggle ()
-  "Show eshell at the bottom of current window cd to current buffer's path. 
-If eshell-toggle'd buffer is already visible in frame for current buffer or current window is (toggled) eshell itself then hide it. "
+  "Show eshell at the bottom of current window cd to current buffer's path.
+If eshell-toggle'd buffer is already visible in frame for current buffer or current window is (toggled) eshell itself then hide it."
   (interactive)
-  (if (eq eshell-buffer-p t)
+  (if (eq eshell-toggle--toggle-buffer-p t)
       ;; if we are in eshell-toggle buffer just delete its window
       (delete-window)
-    
-    (let ((buf-name (et-make-buffer-name)))
+
+    (let ((buf-name (eshell-toggle--make-buffer-name)))
       (if (get-buffer buf-name)
 	  ;; buffer is already created
-	  (let ((vis-buf-window (et-visible-for-bufferp buf-name)))
-	    (if vis-buf-window
-		;; buffer is in visible window, close it
-		(delete-window vis-buf-window)
+          (or (-some-> buf-name eshell-toggle--visiblep delete-window)
+	      (eshell-toggle--show-buffer-split-window buf-name nil))
 
-	      ;; buffer is not in visible window, show it
-	      (et-show-buffer-split-window buf-name nil)))
+        ;; buffer is not created, create it
+        (eshell-toggle--show-buffer-split-window buf-name t)))))
 
-	;; buffer is not created, create it
-	(et-show-buffer-split-window buf-name t)))))
+(when eshell-toggle-init-term-char-mode
+  (dolist (kb (where-is-internal 'eshell-toggle))
+    (define-key term-raw-map kb 'eshell-toggle)))
 
 (provide 'eshell-toggle)
 
