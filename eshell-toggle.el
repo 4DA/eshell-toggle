@@ -50,7 +50,7 @@
   :group 'eshell-toggle)
 
 (defcustom eshell-toggle-default-directory
-  default-directory
+  nil
   "Default directory to open eshell at if buffer has no associated file."
   :type 'directory
   :group 'eshell-toggle)
@@ -93,11 +93,13 @@
 
 (defun eshell-toggle--get-directory ()
   "Return default directory for current buffer."
-  (if eshell-toggle-use-projectile-root
-      (condition-case nil
-          (projectile-project-root)
-        (error eshell-toggle-default-directory))
-    eshell-toggle-default-directory))
+  (or
+   (if eshell-toggle-use-projectile-root
+       (condition-case nil
+           (projectile-project-root)
+         (error nil)))
+   eshell-toggle-default-directory
+   default-directory))
 
 (defun eshell-toggle--make-buffer-name ()
   "Generate toggle buffer name."
