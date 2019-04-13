@@ -5,8 +5,8 @@
 ;; Author: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; Maintainer: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; URL: https://github.com/4da/eshell-toggle
-;; Version: 0.9.0
-;; Package-Requires: ((emacs "24.4")(dash "2.11.0"))
+;; Version: 0.10.0
+;; Package-Requires: ((emacs "25.1")(dash "2.11.0"))
 ;; Keywords: processes
 
 ;; This file is part of GNU Emacs.
@@ -43,10 +43,21 @@
   "Customize group for eshell-toggle.el"
   :group 'emacs)
 
-(defcustom eshell-toggle-height-fraction
+(defcustom eshell-toggle-size-fraction
   3
-  "Proportion of parent window height and eshell window."
+  "Proportion of parent window size and eshell window."
   :type 'integer
+  :group 'eshell-toggle)
+
+(define-obsolete-variable-alias 'eshell-toggle-height-fraction 'eshell-toggle-size-fraction "0.10.0")
+
+(defcustom eshell-toggle-window-side
+  'below
+  "Eshell-toggle buffer position.  See `split-window'."
+  :type '(choice (const 'above)
+                 (const 'below)
+                 (const 'left)
+                 (const 'right))
   :group 'eshell-toggle)
 
 (defcustom eshell-toggle-default-directory
@@ -74,6 +85,12 @@
   :type 'boolean
   :group 'eshell-toggle)
 
+(defcustom eshell-toggle-run-command
+  "ls"
+  "Command to run in a new shell."
+  :type 'string
+  :group 'eshell-toggle)
+
 (defcustom eshell-toggle-init-function
   'eshell-toggle-init-eshell
   "Function to init toggle buffer."
@@ -91,6 +108,7 @@
                 win))
 	 (window-list)))
 
+
 (defun eshell-toggle--get-directory ()
   "Return default directory for current buffer."
   (or
@@ -103,10 +121,12 @@
 
 (defun eshell-toggle--make-buffer-name ()
   "Generate toggle buffer name."
-  (let* ((dir (eshell-toggle--get-directory))
-         (name (string-join (split-string dir "/") eshell-toggle-name-separator))
-         (buf-name (concat "*et" name "*")))
-    buf-name))
+  (if eshell-toggle-use-projectile-root
+      (concat "*et" eshell-toggle-name-separator (projectile-project-name) "*")
+    (let* ((dir (eshell-toggle--get-directory))
+           (name (string-join (split-string dir "/") eshell-toggle-name-separator))
+           (buf-name (concat "*et" name "*")))
+      buf-name)))
 
 (defun eshell-toggle-init-eshell (dir)
   "Init `eshell' buffer with DIR."
@@ -114,41 +134,47 @@
   (insert (concat "cd" " " dir))
   (eshell-send-input)
   (eshell/clear)
-  (insert (concat "ls"))
-  (eshell-send-input))
+  (when eshell-toggle-run-command
+    (insert eshell-toggle-run-command)
+    (eshell-send-input)))
 
-;; TODO: move common code to a macro
-(defun eshell-toggle-init-ansi-term (dir)
-  "Init `ansi-term' buffer with DIR."
+
+(defun eshell-toggle--init-term (input)
+  "Init `ansi-term' and send INPUT string to it."
   (ansi-term (getenv "SHELL"))
   (term-line-mode)
-  (insert (concat "cd" " " dir "; clear; ls"))
+  (insert input)
   (term-send-input)
   (when eshell-toggle-init-term-char-mode
     (term-char-mode)))
+
+(defun eshell-toggle-init-ansi-term (dir)
+  "Init `ansi-term' buffer with DIR."
+  (eshell-toggle--init-term (concat "cd" " " dir "; clear; " (or eshell-toggle-run-command ""))))
 
 (defun eshell-toggle-init-tmux (dir)
   "Init tmux `ansi-term' buffer with DIR."
-  (ansi-term (getenv "SHELL"))
-  (term-line-mode)
-  (insert (format "tmux new -A -c '%s' -s '%s'" dir dir))
-  (term-send-input)
-  (when eshell-toggle-init-term-char-mode
-    (term-char-mode)))
+  (eshell-toggle--init-term (format "tmux new -A -c '%s' -s '%s'" dir dir)))
 
-(defun eshell-toggle--show-buffer-split-window (buf-name new-buffer?)
-  "Split window, init BUF-NAME if NEW-BUFFER? is t and activate it."
-  (let ((height (/ (window-total-height) eshell-toggle-height-fraction))
-        (dir (eshell-toggle--get-directory)))
-    (split-window-vertically (- height))
-    (other-window 1)
 
-    (if new-buffer?
-        (progn
-          (funcall eshell-toggle-init-function dir)
-          (rename-buffer buf-name)
-          (setq eshell-toggle--toggle-buffer-p t))
-      (switch-to-buffer buf-name))))
+(defun eshell-toggle--window-size (side)
+  "Width or height of the selected window, depends on SIDE."
+  (if (memq eshell-toggle-window-side '(left right))
+      (window-text-width)
+    (window-total-height)))
+
+(defun eshell-toggle--split-window ()
+  "Split window according to customization."
+  (let* ((size (/ (eshell-toggle--window-size eshell-toggle-window-side) eshell-toggle-size-fraction))
+         (count (if (memq eshell-toggle-window-side '(above left)) -1 1)))
+    (split-window nil (- size) eshell-toggle-window-side)
+    (other-window count)))
+
+(defun eshell-toggle--new-buffer (buf-name)
+  "Init BUF-NAME."
+  (funcall eshell-toggle-init-function (eshell-toggle--get-directory))
+  (rename-buffer buf-name)
+  (setq eshell-toggle--toggle-buffer-p t))
 
 (defun eshell-toggle ()
   "Show eshell at the bottom of current window cd to current buffer's path.
@@ -157,15 +183,16 @@ If eshell-toggle'd buffer is already visible in frame for current buffer or curr
   (if (eq eshell-toggle--toggle-buffer-p t)
       ;; if we are in eshell-toggle buffer just delete its window
       (delete-window)
-
     (let ((buf-name (eshell-toggle--make-buffer-name)))
       (if (get-buffer buf-name)
 	  ;; buffer is already created
           (or (-some-> buf-name eshell-toggle--visiblep delete-window)
-	      (eshell-toggle--show-buffer-split-window buf-name nil))
-
+	      (eshell-toggle--split-window)
+              (switch-to-buffer buf-name))
         ;; buffer is not created, create it
-        (eshell-toggle--show-buffer-split-window buf-name t)))))
+        (eshell-toggle--split-window)
+        (eshell-toggle--new-buffer buf-name)
+        (switch-to-buffer buf-name)))))
 
 (when eshell-toggle-init-term-char-mode
   (dolist (kb (where-is-internal 'eshell-toggle))
