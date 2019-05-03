@@ -87,8 +87,9 @@
 
 (defcustom eshell-toggle-run-command
   "ls"
-  "Command to run in a new shell."
-  :type 'string
+  "Command to run in a new shell if any."
+  :type '(choice (const :tag "None" nil)
+                 (string :tag "Command"))
   :group 'eshell-toggle)
 
 (defcustom eshell-toggle-init-function
