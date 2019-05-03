@@ -133,25 +133,25 @@
   "Init `eshell' buffer with DIR."
   (let ((default-directory dir))
     (eshell "new")
-    (eshell/clear)
     (when eshell-toggle-run-command
       (insert eshell-toggle-run-command)
       (eshell-send-input))))
 
 
-(defun eshell-toggle--init-term (input)
+(defun eshell-toggle--init-term (&optional input)
   "Init `ansi-term' and send INPUT string to it."
   (ansi-term (getenv "SHELL"))
   (term-line-mode)
-  (insert input)
-  (term-send-input)
+  (when input
+    (insert input)
+    (term-send-input))
   (when eshell-toggle-init-term-char-mode
     (term-char-mode)))
 
 (defun eshell-toggle-init-ansi-term (dir)
   "Init `ansi-term' buffer with DIR."
   (let ((default-directory dir))
-    (eshell-toggle--init-term (concat "clear; " (or eshell-toggle-run-command "")))))
+    (eshell-toggle--init-term eshell-toggle-run-command)))
 
 (defun eshell-toggle-init-tmux (dir)
   "Init tmux `ansi-term' buffer with DIR."
