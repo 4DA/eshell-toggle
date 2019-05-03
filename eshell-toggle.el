@@ -131,13 +131,12 @@
 
 (defun eshell-toggle-init-eshell (dir)
   "Init `eshell' buffer with DIR."
-  (eshell "new")
-  (insert (concat "cd" " " dir))
-  (eshell-send-input)
-  (eshell/clear)
-  (when eshell-toggle-run-command
-    (insert eshell-toggle-run-command)
-    (eshell-send-input)))
+  (let ((default-directory dir))
+    (eshell "new")
+    (eshell/clear)
+    (when eshell-toggle-run-command
+      (insert eshell-toggle-run-command)
+      (eshell-send-input))))
 
 
 (defun eshell-toggle--init-term (input)
@@ -151,7 +150,8 @@
 
 (defun eshell-toggle-init-ansi-term (dir)
   "Init `ansi-term' buffer with DIR."
-  (eshell-toggle--init-term (concat "cd" " " dir "; clear; " (or eshell-toggle-run-command ""))))
+  (let ((default-directory dir))
+    (eshell-toggle--init-term (concat "clear; " (or eshell-toggle-run-command "")))))
 
 (defun eshell-toggle-init-tmux (dir)
   "Init tmux `ansi-term' buffer with DIR."
