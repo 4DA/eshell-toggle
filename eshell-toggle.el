@@ -158,15 +158,15 @@
   (eshell-toggle--init-term (format "tmux new -A -c '%s' -s '%s'" dir dir)))
 
 
-(defun eshell-toggle--window-size (side)
-  "Width or height of the selected window, depends on SIDE."
+(defun eshell-toggle--window-size ()
+  "Width or height of the selected window, depends on `eshell-toggle-window-side'."
   (if (memq eshell-toggle-window-side '(left right))
       (window-text-width)
     (window-total-height)))
 
 (defun eshell-toggle--split-window ()
   "Split window according to customization."
-  (let* ((size (/ (eshell-toggle--window-size eshell-toggle-window-side) eshell-toggle-size-fraction))
+  (let* ((size (/ (eshell-toggle--window-size) eshell-toggle-size-fraction))
          (count (if (memq eshell-toggle-window-side '(above left)) -1 1)))
     (split-window nil (- size) eshell-toggle-window-side)
     (other-window count)))
