@@ -4,7 +4,7 @@ Simple functionality to show/hide eshell/ansi-term (or almost any other buffer, 
 
     (add-to-list 'load-path "/path/to/eshell-toggle.el")
     (require 'eshell-toggle)
-    (global-set-key (kdb "s-`") 'eshell-toggle)
+    (global-set-key (kbd "s-`") 'eshell-toggle)
 
 or using use-package and quelpa:
 
