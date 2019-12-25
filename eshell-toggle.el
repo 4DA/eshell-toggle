@@ -177,6 +177,7 @@
   (rename-buffer buf-name)
   (setq eshell-toggle--toggle-buffer-p t))
 
+;;;###autoload
 (defun eshell-toggle ()
   "Show eshell at the bottom of current window cd to current buffer's path.
 If eshell-toggle'd buffer is already visible in frame for current buffer or current window is (toggled) eshell itself then hide it."
