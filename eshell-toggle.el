@@ -178,16 +178,17 @@
   (setq eshell-toggle--toggle-buffer-p t))
 
 ;;;###autoload
-(defun eshell-toggle (&optional show)
+(defun eshell-toggle (&optional keep-visible)
   "Show eshell at the bottom of current window cd to current buffer's path.
 If eshell-toggle'd buffer is already visible in frame for current
 buffer or current window is (toggled) eshell itself then hide
-it. If SHOW then do not hide it in the last step."
+it. If KEEP-VISIBLE then do not hide it in the last step."
   (interactive)
   (if (eq eshell-toggle--toggle-buffer-p t)
-      (unless show
+      (unless keep-visible
+        ;; if we are in eshell-toggle buffer just delete its window
         (delete-window))
-      ;; if we are in eshell-toggle buffer just delete its window
+      
     (let ((buf-name (eshell-toggle--make-buffer-name)))
       (if (get-buffer buf-name)
 	  ;; buffer is already created
