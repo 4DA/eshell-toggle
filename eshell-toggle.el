@@ -98,6 +98,13 @@
   :type 'function
   :group 'eshell-toggle)
 
+(defcustom eshell-toggle-use-git-root
+  nil
+  "Open eshell at git root directory, if exists."
+  :type '(choice (const :tag "Disabled" nil)
+                 (const :tag "Enabled" t))
+  :group 'eshell-toggle)
+
 (defvar eshell-toggle--toggle-buffer-p nil)
 (make-variable-buffer-local 'eshell-toggle--toggle-buffer-p)
 
@@ -109,6 +116,11 @@
                 win))
 	 (window-list)))
 
+(defun eshell-toggle-get-git-directory (dir)
+  "Returns directory path of git project root directory, otherwise return nil."
+  (require 'vc)
+  (funcall (lambda ()
+	     (vc-find-root dir ".git"))))
 
 (defun eshell-toggle--get-directory ()
   "Return default directory for current buffer."
@@ -116,6 +128,10 @@
    (if eshell-toggle-use-projectile-root
        (condition-case nil
            (projectile-project-root)
+         (error nil)))
+   (if eshell-toggle-use-git-root
+       (condition-case nil
+	   (eshell-toggle-get-git-directory default-directory)
          (error nil)))
    eshell-toggle-default-directory
    default-directory))
