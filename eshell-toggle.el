@@ -116,6 +116,8 @@
                 win))
 	 (window-list)))
 
+(declare-function vc-find-root "vc-hooks")
+
 (defun eshell-toggle-get-git-directory (dir)
   "Returns directory path of git project root directory, otherwise return nil."
   (require 'vc)
