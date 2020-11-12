@@ -32,6 +32,7 @@
 
 (require 'dash)
 (require 'eshell)
+(require 'esh-mode)
 (require 'term)
 (require 'subr-x)
 
@@ -43,13 +44,13 @@
   "Customize group for eshell-toggle.el"
   :group 'emacs)
 
+(define-obsolete-variable-alias 'eshell-toggle-height-fraction 'eshell-toggle-size-fraction "0.10.0")
+
 (defcustom eshell-toggle-size-fraction
   3
   "Proportion of parent window size and eshell window."
   :type 'integer
   :group 'eshell-toggle)
-
-(define-obsolete-variable-alias 'eshell-toggle-height-fraction 'eshell-toggle-size-fraction "0.10.0")
 
 (defcustom eshell-toggle-window-side
   'below
@@ -123,6 +124,9 @@
   (require 'vc)
   (funcall (lambda ()
 	     (vc-find-root dir ".git"))))
+
+(declare-function projectile-project-root "ext:projectile")
+(declare-function projectile-project-name "ext:projectile")
 
 (defun eshell-toggle--get-directory ()
   "Return default directory for current buffer."
