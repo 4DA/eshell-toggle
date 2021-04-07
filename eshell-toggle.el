@@ -109,14 +109,6 @@
 (defvar eshell-toggle--toggle-buffer-p nil)
 (make-variable-buffer-local 'eshell-toggle--toggle-buffer-p)
 
-(defun eshell-toggle--visiblep (et-buffer-name)
-  "Return if ET-BUFFER-NAME is visible."
-  (-some (lambda (win)
-           (and (-> win window-buffer buffer-name
-                    (string= et-buffer-name))
-                win))
-	 (window-list)))
-
 (declare-function vc-find-root "vc-hooks")
 
 (defun eshell-toggle-get-git-directory (dir)
@@ -215,7 +207,7 @@ visible and will not be hidden."
     (let ((buf-name (eshell-toggle--make-buffer-name)))
       (if (get-buffer buf-name)
 	  ;; buffer is already created
-          (or (-some-> buf-name eshell-toggle--visiblep delete-window)
+          (or (-some-> buf-name get-buffer-window delete-window)
 	      (eshell-toggle--split-window)
               (switch-to-buffer buf-name))
         ;; buffer is not created, create it
