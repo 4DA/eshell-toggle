@@ -55,10 +55,10 @@
 (defcustom eshell-toggle-window-side
   'below
   "Eshell-toggle buffer position.  See `split-window'."
-  :type '(choice (const 'above)
-                 (const 'below)
-                 (const 'left)
-                 (const 'right))
+  :type '(choice (const above)
+                 (const below)
+                 (const left)
+                 (const right))
   :group 'eshell-toggle)
 
 (defcustom eshell-toggle-default-directory
