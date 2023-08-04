@@ -11,7 +11,8 @@ or using use-package and quelpa:
     (use-package eshell-toggle
       :custom
       (eshell-toggle-size-fraction 3)
-      (eshell-toggle-use-projectile-root t)
+      (eshell-toggle-use-projectile-root t) ;; for projectile
+      ;; (eshell-toggle-use-project-root t) ;; for in-built project.el
       (eshell-toggle-run-command nil)
       (eshell-toggle-init-function #'eshell-toggle-init-ansi-term)
       :quelpa
@@ -26,7 +27,8 @@ or using use-package and quelpa:
 
 - `eshell-toggle-default-directory` Default directory to open eshell at if buffer has no associated file;
 - `eshell-toggle-name-separator` String to separate directory paths when giving a name to buffer.
-- `eshell-toggle-use-projectile-root` If not nil eshell-toggle will try to use projectile to open eshell at project root.
+- `eshell-toggle-use-projectile-root` If not nil eshell-toggle will try to use `projectile` to open eshell at project root.
+- `eshell-toggle-use-project-root` If not nil eshell-toggle will try to use in-built `project.el` to open eshell at project root.
 
 - `eshell-toggle-run-command` - command to run in a new shell.
 
