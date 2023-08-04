@@ -74,6 +74,13 @@
                  (const :tag "Enabled" t))
   :group 'eshell-toggle)
 
+(defcustom eshell-toggle-use-project-root
+  nil
+  "Open eshell at project.el's project root if not nil."
+  :type '(choice (const :tag "Disabled" nil)
+                 (const :tag "Enabled" t))
+  :group 'eshell-toggle)
+
 (defcustom eshell-toggle-name-separator
   ":"
   "String to separate directory paths when giving a name to buffer."
@@ -127,21 +134,32 @@
        (condition-case nil
            (projectile-project-root)
          (error nil)))
+   (if eshell-toggle-use-project-root
+       (condition-case nil
+           (project-root (project-current))
+         (error nil)))
    (if eshell-toggle-use-git-root
        (condition-case nil
-	   (eshell-toggle-get-git-directory default-directory)
+           (eshell-toggle-get-git-directory default-directory)
          (error nil)))
    eshell-toggle-default-directory
    default-directory))
 
 (defun eshell-toggle--make-buffer-name ()
   "Generate toggle buffer name."
-  (if eshell-toggle-use-projectile-root
-      (concat "*et" eshell-toggle-name-separator (projectile-project-name) "*")
-    (let* ((dir (eshell-toggle--get-directory))
-           (name (string-join (split-string dir "/") eshell-toggle-name-separator))
-           (buf-name (concat "*et" name "*")))
-      buf-name)))
+  (or
+   (if eshell-toggle-use-projectile-root
+       (concat "*et" eshell-toggle-name-separator (projectile-project-name) "*")
+     (let* ((dir (eshell-toggle--get-directory))
+            (name (string-join (split-string dir "/") eshell-toggle-name-separator))
+            (buf-name (concat "*et" name "*")))
+       buf-name))
+   (if eshell-toggle-use-project-root
+       (concat "*et" eshell-toggle-name-separator (project-name (project-current)) "*")
+     (let* ((dir (eshell-toggle--get-directory))
+            (name (string-join (split-string dir "/") eshell-toggle-name-separator))
+            (buf-name (concat "*et" name "*")))
+       buf-name))))
 
 (defun eshell-toggle-init-eshell (dir)
   "Init `eshell' buffer with DIR."
