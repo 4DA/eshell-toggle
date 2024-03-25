@@ -5,7 +5,7 @@
 ;; Author: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; Maintainer: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; URL: https://github.com/4da/eshell-toggle
-;; Version: 0.10.0
+;; Version: 0.10.1
 ;; Package-Requires: ((emacs "25.1")(dash "2.11.0"))
 ;; Keywords: processes
 
@@ -30,6 +30,7 @@
 ;; Show eshell at the bottom of current window cd to current buffer's path.
 ;; If eshell-toggle'd buffer is already visible in frame for current buffer or current window is (toggled) eshell itself then hide it.
 
+(require 'project)
 (require 'dash)
 (require 'eshell)
 (require 'esh-mode)
@@ -41,7 +42,7 @@
 ;;; Code:
 
 (defgroup eshell-toggle nil
-  "Customize group for eshell-toggle.el"
+  "Customize group for eshell-toggle.el package."
   :group 'emacs)
 
 (define-obsolete-variable-alias 'eshell-toggle-height-fraction 'eshell-toggle-size-fraction "0.10.0")
@@ -67,18 +68,19 @@
   :type 'directory
   :group 'eshell-toggle)
 
-(defcustom eshell-toggle-use-projectile-root
-  nil
-  "Open eshell at projectile's project root if not nil."
-  :type '(choice (const :tag "Disabled" nil)
-                 (const :tag "Enabled" t))
-  :group 'eshell-toggle)
+(make-obsolete-variable 'eshell-toggle-use-projectile-root "Use `eshell-toggle-find-project-root-package' instead" "0.10.1")
 
-(defcustom eshell-toggle-use-project-root
+(defalias 'eshell-toggle-use-projectile-root 'eshell-toggle-find-project-root-package)
+
+(defcustom eshell-toggle-find-project-root-package
   nil
-  "Open eshell at project.el's project root if not nil."
-  :type '(choice (const :tag "Disabled" nil)
-                 (const :tag "Enabled" t))
+  "To open an eshell at project root use on of the following options.
+set to `'project` to use the built-in `project.el`,
+if set to `'projectile` it uses `projectile`,
+and if set to nil it detects the current directory."
+  :type '(choice (const :tag "Built-in `project'" project)
+                 (const :tag "`projectile'" projectile)
+		             (const :tag "Disabled" nil))
   :group 'eshell-toggle)
 
 (defcustom eshell-toggle-name-separator
@@ -89,7 +91,8 @@
 
 (defcustom eshell-toggle-init-term-char-mode
   nil
-  "Switch `ansi-term' buffer to ‘term-char-mode’ after init.  Bind `eshell-toggle' in `term-raw-map'."
+  "Switch `ansi-term' buffer to ‘term-char-mode’ after init.
+Bind `eshell-toggle' in `term-raw-map'."
   :type 'boolean
   :group 'eshell-toggle)
 
@@ -119,10 +122,10 @@
 (declare-function vc-find-root "vc-hooks")
 
 (defun eshell-toggle-get-git-directory (dir)
-  "Returns directory path of git project root directory, otherwise return nil."
+  "Return directory path of git project root DIR, otherwise return nil."
   (require 'vc)
   (funcall (lambda ()
-	     (vc-find-root dir ".git"))))
+	           (vc-find-root dir ".git"))))
 
 (declare-function projectile-project-root "ext:projectile")
 (declare-function projectile-project-name "ext:projectile")
@@ -130,13 +133,14 @@
 (defun eshell-toggle--get-directory ()
   "Return default directory for current buffer."
   (or
-   (if eshell-toggle-use-projectile-root
-       (condition-case nil
-           (projectile-project-root)
-         (error nil)))
-   (if eshell-toggle-use-project-root
+   (if (eq eshell-toggle-find-project-root-package 'project)
        (condition-case nil
            (project-root (project-current))
+         (error nil)))
+   (if (or (eq eshell-toggle-find-project-root-package 'projectile)
+           (eq eshell-toggle-find-project-root-package t))
+       (condition-case nil
+           (projectile-project-root)
          (error nil)))
    (if eshell-toggle-use-git-root
        (condition-case nil
@@ -147,19 +151,18 @@
 
 (defun eshell-toggle--make-buffer-name ()
   "Generate toggle buffer name."
-  (or
-   (if eshell-toggle-use-projectile-root
-       (concat "*et" eshell-toggle-name-separator (projectile-project-name) "*")
-     (let* ((dir (eshell-toggle--get-directory))
-            (name (string-join (split-string dir "/") eshell-toggle-name-separator))
-            (buf-name (concat "*et" name "*")))
-       buf-name))
-   (if eshell-toggle-use-project-root
-       (concat "*et" eshell-toggle-name-separator (project-name (project-current)) "*")
-     (let* ((dir (eshell-toggle--get-directory))
-            (name (string-join (split-string dir "/") eshell-toggle-name-separator))
-            (buf-name (concat "*et" name "*")))
-       buf-name))))
+  (let ((project
+	       (cond ((eq eshell-toggle-find-project-root-package 'project)
+		            (project-name (project-current)))
+	             ((eq eshell-toggle-find-project-root-package 'projectile)
+		            (projectile-project-name))
+	             (t ""))))
+    (if (not eshell-toggle-find-project-root-package)
+	      (let* ((dir (eshell-toggle--get-directory))
+               (name (string-join (split-string dir "/") eshell-toggle-name-separator))
+               (buf-name (concat "*et" name "*")))
+	        buf-name)
+      (concat "*et" eshell-toggle-name-separator project "*"))))
 
 (defun eshell-toggle-init-eshell (dir)
   "Init `eshell' buffer with DIR."
@@ -212,21 +215,21 @@
 ;;;###autoload
 (defun eshell-toggle (&optional keep-visible)
   "Show eshell at the bottom of current window and cd to current buffer's path.
-(1) If eshell-toggle'd buffer is already visible in frame for
+\\(1\\) If eshell-toggle'd buffer is already visible in frame for
 current buffer then select (toggled) eshell window.
-(2) If current window is (toggled) eshell itself then hide it.
-(3) If KEEP-VISIBLE is non-nil, (toggled) eshell window will stay
+\\(2\\) If current window is (toggled) eshell itself then hide it.
+\\(3\\) If KEEP-VISIBLE is non-nil, (toggled) eshell window will stay
 visible and will not be hidden."
   (interactive)
   (if (eq eshell-toggle--toggle-buffer-p t)
       (unless keep-visible
         ;; if selected window is eshell-toggle buffer itself just delete its window
-        (delete-window))    
+        (delete-window))
     (let ((buf-name (eshell-toggle--make-buffer-name)))
       (if (get-buffer buf-name)
-	  ;; buffer is already created
+	        ;; buffer is already created
           (or (-some-> buf-name get-buffer-window delete-window)
-	      (eshell-toggle--split-window)
+	            (eshell-toggle--split-window)
               (switch-to-buffer buf-name))
         ;; buffer is not created, create it
         (eshell-toggle--split-window)
