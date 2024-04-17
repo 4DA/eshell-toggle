@@ -11,7 +11,9 @@ or using use-package and quelpa:
     (use-package eshell-toggle
       :custom
       (eshell-toggle-size-fraction 3)
-      (eshell-toggle-use-projectile-root t)
+      (eshell-toggle-find-project-root-package t) ;; for projectile
+      ;;(eshell-toggle-find-project-root-package 'projectile) ;; for projectile
+      ;; (eshell-toggle-use-projectile-root 'project) ;; for in-built project.el
       (eshell-toggle-run-command nil)
       (eshell-toggle-init-function #'eshell-toggle-init-ansi-term)
       :quelpa
@@ -26,7 +28,8 @@ or using use-package and quelpa:
 
 - `eshell-toggle-default-directory` Default directory to open eshell at if buffer has no associated file;
 - `eshell-toggle-name-separator` String to separate directory paths when giving a name to buffer.
-- `eshell-toggle-use-projectile-root` If not nil eshell-toggle will try to use projectile to open eshell at project root.
+- `eshell-toggle-use-projectile-root` is obsolete since 0.10.1, use the following `eshell-toggle-find-project-root-package` instead.
+- `eshell-toggle-find-project-root-package`  If set to `'project` it tries to use the built-in `project` to open an eshell at project root, if set to `'projectile` or `t` it uses `projectile`, and if set to nil it detects the current directory.
 
 - `eshell-toggle-run-command` - command to run in a new shell.
 
