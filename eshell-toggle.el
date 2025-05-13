@@ -1,11 +1,11 @@
 ;;; eshell-toggle.el --- Show/hide eshell under active window. -*- lexical-binding: t -*-
 
-;; Copyright (C) 2015, 2016  Dmitry Cherkasov
+;; Copyright (C) 2015 - 2025  Dmitry Cherkasov and others
 
 ;; Author: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; Maintainer: Dmitry Cherkassov <dcherkassov@gmail.com>
 ;; URL: https://github.com/4da/eshell-toggle
-;; Version: 0.10.1
+;; Version: 0.11.0
 ;; Package-Requires: ((emacs "25.1")(dash "2.11.0"))
 ;; Keywords: processes
 
@@ -164,8 +164,9 @@ Bind `eshell-toggle' in `term-raw-map'."
 	        buf-name)
       (concat "*et" eshell-toggle-name-separator project "*"))))
 
-(defun eshell-toggle-init-eshell (dir)
+(defun eshell-toggle-init-eshell (dir buf-name)
   "Init `eshell' buffer with DIR."
+  (ignore buf-name)
   (let ((default-directory dir))
     (eshell "new")
     (when eshell-toggle-run-command
@@ -183,15 +184,24 @@ Bind `eshell-toggle' in `term-raw-map'."
   (when eshell-toggle-init-term-char-mode
     (term-char-mode)))
 
-(defun eshell-toggle-init-ansi-term (dir)
+(defun eshell-toggle-init-ansi-term (dir buf-name)
   "Init `ansi-term' buffer with DIR."
+  (ignore buf-name)
   (let ((default-directory dir))
     (eshell-toggle--init-term eshell-toggle-run-command)))
 
-(defun eshell-toggle-init-tmux (dir)
+(defun eshell-toggle-init-tmux (dir buf-name)
   "Init tmux `ansi-term' buffer with DIR."
+  (ignore buf-name)
   (eshell-toggle--init-term (format "tmux new -A -c '%s' -s '%s'" dir dir)))
 
+(defun eshell-toggle-init-shell(dir buf-name)
+  "Init `shell' buffer with DIR."
+  (let ((default-directory dir))
+    (shell buf-name)
+    (when eshell-toggle-run-command
+      (insert eshell-toggle-run-command)
+      (comint-send-input))))
 
 (defun eshell-toggle--window-size ()
   "Width or height of the selected window, depends on `eshell-toggle-window-side'."
@@ -208,7 +218,7 @@ Bind `eshell-toggle' in `term-raw-map'."
 
 (defun eshell-toggle--new-buffer (buf-name)
   "Init BUF-NAME."
-  (funcall eshell-toggle-init-function (eshell-toggle--get-directory))
+  (funcall eshell-toggle-init-function (eshell-toggle--get-directory) buf-name)
   (rename-buffer buf-name)
   (setq eshell-toggle--toggle-buffer-p t))
 

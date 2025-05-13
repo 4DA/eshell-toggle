@@ -33,7 +33,7 @@ or using use-package and quelpa:
 
 - `eshell-toggle-run-command` - command to run in a new shell.
 
-- `eshell-toggle-init-function` is a function to initialize toggled buffer, default one is `eshell-toggle-init-eshell`, but can be any function which takes a directory as an argument and creates a buffer, ootb there are `eshell-toggle-init-eshell`, `eshell-toggle-init-ansi-term` and `eshell-toggle-init-tmux` (you have to have tmux binary in your PATH), `dired` and `magit-status` work too.
+- `eshell-toggle-init-function` is a function to initialize toggled buffer, default one is `eshell-toggle-init-eshell`, but can be any function which takes a directory and buffer name as arguments and creates a buffer, ootb there are `eshell-toggle-init-eshell`, `eshell-toggle-init-ansi-term`, `eshell-toggle-init-shell` and `eshell-toggle-init-tmux` and (you have to have tmux binary in your PATH), `dired` and `magit-status` work too.
 - `eshell-toggle-init-term-char-mode` If not nil eshell-toggle starts ansi-term based buffers in `term-char-mode`
 
 If you want to change these on a per-directory basis, you can use [.dir-locals.el](https://www.gnu.org/software/emacs/manual/html_node/emacs/Directory-Variables.html) magic:
